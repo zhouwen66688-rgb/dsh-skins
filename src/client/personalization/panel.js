@@ -156,6 +156,65 @@ export function createPersonalizationPanel({ jsx, react, configClient, tr, built
     ] });
   }
 
+  // 标语（本地功能）：草稿编辑 + 显式「保存」。标语不走 ADR-0003 的
+  // 自动保存——输入只进本地草稿，按保存才 preview + flushNow 立即落盘；
+  // 成功内联闪现「已保存」，失败沿用面板全局状态条（lastFlushError）。
+  // 草稿随已保存值的内容变化自动回同步（恢复默认后草稿跟着回默认），
+  // 用户正在输入的脏草稿永不被覆盖。
+  function SloganField({ field, value, onValue, disabled }) {
+    const savedText = `${value?.zh ?? ""}\u0000${value?.en ?? ""}`;
+    const [draft, setDraft] = useState(() => {
+      const [zh, en] = savedText.split("\u0000");
+      return { zh, en };
+    });
+    const [note, setNote] = useState(null); // "saved" | null（短暂反馈）
+    const dirty = draft.zh !== (value?.zh ?? "") || draft.en !== (value?.en ?? "");
+    useEffect(() => {
+      const [zh, en] = savedText.split("\u0000");
+      setDraft((previous) => (previous.zh === zh && previous.en === en ? previous : { zh, en }));
+    }, [savedText]);
+    useEffect(() => {
+      if (note === null) return undefined;
+      const timer = setTimeout(() => setNote(null), 1600);
+      return () => clearTimeout(timer);
+    }, [note]);
+    const save = () => {
+      onValue({ ...draft });
+      void configClient.flushNow().then((result) => {
+        if (!result.blocked) setNote("saved");
+      });
+    };
+    return jsx("label", { className: "dsh-skins-pz-row", children: [
+      jsx("span", { className: "dsh-skins-pz-label", children: tr(field.labelKey) }),
+      jsx("div", {
+        className: "dsh-skins-pz-fields dsh-skins-pz-fields-locale",
+        children: [
+          jsx("input", {
+            key: "zh", type: "text", className: "dsh-skins-pz-input",
+            value: draft.zh, maxLength: field.maxLength, disabled,
+            "aria-label": `${tr(field.labelKey)} (ZH)`,
+            placeholder: field.default?.zh ?? "",
+            onChange: (event) => setDraft({ ...draft, zh: event.target.value }),
+          }),
+          jsx("input", {
+            key: "en", type: "text", className: "dsh-skins-pz-input",
+            value: draft.en, maxLength: field.maxLength, disabled,
+            "aria-label": `${tr(field.labelKey)} (EN)`,
+            placeholder: field.default?.en ?? "",
+            onChange: (event) => setDraft({ ...draft, en: event.target.value }),
+          }),
+          jsx("button", {
+            key: "save", type: "button",
+            className: `dsh-skins-pz-btn${note === "saved" ? " dsh-skins-pz-primary" : ""}`,
+            disabled: disabled || !dirty,
+            onClick: save,
+            children: note === "saved" ? tr("personalization.sloganSaved") : tr("personalization.sloganSave"),
+          }, "save"),
+        ],
+      }),
+    ] });
+  }
+
   function RangeField({ field, value, onValue, disabled }) {
     const current = value ?? field.default;
     return jsx("label", { className: "dsh-skins-pz-row", children: [
@@ -419,7 +478,9 @@ export function createPersonalizationPanel({ jsx, react, configClient, tr, built
       const setValue = (next) => configClient.preview(skinId, field.key, next);
       const common = { field, value, onValue: setValue, disabled: writesBlocked };
       switch (field.type) {
-        case "text": return jsx(TextField, { ...common, key: field.key });
+        case "text": return field.scope === "locale"
+          ? jsx(SloganField, { ...common, key: `${skinId}:${field.key}` })
+          : jsx(TextField, { ...common, key: field.key });
         case "range": return jsx(RangeField, { ...common, key: field.key });
         case "select": return jsx(SelectField, { ...common, key: field.key });
         case "image": return jsx(WallpaperSection, {

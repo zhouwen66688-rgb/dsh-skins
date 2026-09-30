@@ -6,6 +6,7 @@
  * design remains a placeholder until the final design lands.
  */
 import { resolveImageRef } from "../../../shared/personalization/catalog.js";
+import { floatRgb } from "../../float-family.js";
 
 // Official UEFI Forum logo — the red cube with white "uefi" letters, embedded
 // as two vector paths traced from uefi.org's published uefi_logo_red.gif
@@ -1128,21 +1129,34 @@ body[data-dsh-uefi-harness][data-ds-dark-theme] .dsh-skins-pop {
     const pct = (points) => (points / 100).toFixed(2);
     const alpha = (rgb, baked) => `rgba(${rgb}, ${pct(pt(baked))})`;
 
-    // 随动族：字面量烘焙点（亮 / 暗），RGB 逐字取自上部配色块（7 token，
-    // uefi 无 login-input）；浮层族（bg-overlay/menu/selector/tip/nav 态/
-    // 气泡）固定不随旋钮。
+    // 随动族（主对话面板）：字面量烘焙点（亮 / 暗），RGB 逐字取自上部配色块。
+    // 浮窗族（layer-1/2/3 + bg-overlay）脱离主旋钮，见下方 floatRiding。
     const riding = {
       "--dsw-alias-bg-base": { light: ["248, 247, 255", 55], dark: ["23, 18, 45", 55] },
       "--dsw-alias-bg-module-platform": { light: ["241, 238, 255", 55], dark: ["39, 31, 73", 60] },
-      "--dsw-alias-bg-layer-1": { light: ["255, 255, 255", 48], dark: ["31, 25, 59", 55] },
-      "--dsw-alias-bg-layer-2": { light: ["247, 245, 255", 56], dark: ["39, 31, 73", 60] },
-      "--dsw-alias-bg-layer-3": { light: ["241, 238, 255", 62], dark: ["48, 38, 88", 64] },
       "--dsw-specific-sidebar-fill": { light: ["238, 235, 255", 60], dark: ["25, 20, 48", 72] },
       "--dsw-specific-input-major": { light: ["255, 255, 255", 62], dark: ["42, 34, 78", 55] },
     };
     const tokenOverrides = {};
     for (const [key, modes] of Object.entries(riding)) {
       tokenOverrides[key] = { light: alpha(modes.light[0], modes.light[1]), dark: alpha(modes.dark[0], modes.dark[1]) };
+    }
+
+    // 浮窗族（本地功能）：bg-layer-1/2/3 + bg-overlay 改挂 floatOpacity +
+    // floatColor，不再随 P。D=55 + starry 时与出厂静态值逐字节一致。
+    const D = typeof values.floatOpacity === "number" ? values.floatOpacity : 55;
+    const alphaF = (rgb, baked) => `rgba(${rgb}, ${pct(Math.min(100, Math.max(0, D + baked - 55)))})`;
+    const floatRiding = {
+      "--dsw-alias-bg-layer-1": { light: ["255, 255, 255", 48], dark: ["31, 25, 59", 55] },
+      "--dsw-alias-bg-layer-2": { light: ["247, 245, 255", 56], dark: ["39, 31, 73", 60] },
+      "--dsw-alias-bg-layer-3": { light: ["241, 238, 255", 62], dark: ["48, 38, 88", 64] },
+      "--dsw-alias-bg-overlay": { light: ["252, 251, 255", 82], dark: ["27, 21, 54", 88] },
+    };
+    for (const [key, modes] of Object.entries(floatRiding)) {
+      tokenOverrides[key] = {
+        light: alphaF(floatRgb(values.floatColor, key, modes.light[0]), modes.light[1]),
+        dark: alphaF(floatRgb(values.floatColor, key, modes.dark[0]), modes.dark[1]),
+      };
     }
 
     // 纱与旋钮同联动（默认 P 时整串与烘焙 scrim 逐字节相等）。

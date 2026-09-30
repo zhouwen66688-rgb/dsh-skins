@@ -150,23 +150,32 @@ test("field edits preview locally and arm the auto-save; no save button exists",
   assert.equal(panel.configClient.getState().dirtyCount, 1, "edits preview locally; the client debounces the flush");
 });
 
-test("slogan text edits preview the complete locale object", async () => {
+test("slogan edits stay in a local draft; 保存 previews the locale object and flushes at once", async () => {
   const panel = mountPanel({ skinId: "tgcf", status: "synced" });
   await tick();
-  const tree = panel.tree();
-  const zh = flatten(tree).find((n) => n.type === "input" && n.props["aria-label"] === "personalization.slogan (ZH)");
-  const en = flatten(tree).find((n) => n.type === "input" && n.props["aria-label"] === "personalization.slogan (EN)");
+  const zh = flatten(panel.tree()).find((n) => n.type === "input" && n.props["aria-label"] === "personalization.slogan (ZH)");
+  const save = () => findButton(panel.tree(), "personalization.sloganSave");
   assert.notEqual(zh, null);
+  assert.notEqual(save(), null, "explicit save button exists for the slogan");
+  assert.equal(save().props.disabled, true, "pristine draft keeps save disabled");
+
   zh.props.onChange({ target: { value: "新标语" } });
   await tick();
+  assert.equal(panel.configClient.calls.preview.length, 0, "draft typing never previews");
+
   // Re-query from the re-rendered tree — the en input's handler must see the
-  // fresh locale value (exactly like typing into the re-rendered DOM).
+  // fresh draft (exactly like typing into the re-rendered DOM).
   const enFresh = flatten(panel.tree()).find((n) => n.type === "input" && n.props["aria-label"] === "personalization.slogan (EN)");
   enFresh.props.onChange({ target: { value: "New slogan" } });
   await tick();
-  assert.equal(panel.configClient.calls.preview.length, 2);
-  assert.deepEqual(panel.configClient.calls.preview[0].value, { zh: "新标语", en: "No Taboos" });
-  assert.deepEqual(panel.configClient.calls.preview[1].value, { zh: "新标语", en: "New slogan" });
+  assert.equal(panel.configClient.calls.preview.length, 0, "draft typing never previews");
+
+  assert.equal(save().props.disabled, false, "dirty draft enables save");
+  await save().props.onClick();
+  await tick();
+  assert.equal(panel.configClient.calls.preview.length, 1);
+  assert.deepEqual(panel.configClient.calls.preview[0], { skinId: "tgcf", key: "slogan", value: { zh: "新标语", en: "New slogan" } });
+  assert.equal(panel.configClient.calls.flushNow, 1, "save flushes immediately");
 });
 
 test("恢复默认 confirms with the affected field list; decline is a no-op (user ruling #9)", async () => {

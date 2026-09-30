@@ -183,8 +183,9 @@ test("mergeValues: unknown skin yields empty values without throwing", () => {
 
 test("accessors expose schema, fields, asset fields and defaults", () => {
   const schema = getSkinSchema("tgcf");
-  assert.equal(schema.fields.length, 3);
-  assert.deepEqual(schema.fields.map((field) => field.key), ["wallpaper", "slogan", "panelOpacity"]);
+  assert.equal(schema.fields.length, 5);
+  assert.deepEqual(schema.fields.map((field) => field.key),
+    ["wallpaper", "slogan", "panelOpacity", "floatOpacity", "floatColor"]);
   // Three curated pieces since the 1.0.0 addition; moonlit leads the grid
   // (user ruling) and is the factory default.
   const wallpaperField = getField("tgcf", "wallpaper");
@@ -196,6 +197,19 @@ test("accessors expose schema, fields, asset fields and defaults", () => {
   assert.equal(getSkinSchema("uefi-harness").builtinAssets.art.labelKey, "personalization.uefi.art");
   assert.equal(getField("tgcf", "blur"), null, "blur field retired by ruling #14");
   assert.equal(getField("tgcf", "panelOpacity").default, 35);
+  // 浮窗族（本地功能）：通透度默认锚定出厂观感（tgcf/meirenzhi 85，
+  // openbmc/uefi 55）；颜色二选：深色 / 星空蓝（默认）。
+  const floatOpacity = getField("tgcf", "floatOpacity");
+  assert.equal(floatOpacity.default, 85);
+  assert.equal(floatOpacity.min, 0);
+  assert.equal(floatOpacity.max, 100);
+  const floatColor = getField("tgcf", "floatColor");
+  assert.equal(floatColor.type, "select");
+  assert.deepEqual(floatColor.options.map((option) => option.value), ["dark", "starry"]);
+  assert.equal(floatColor.default, "starry");
+  assert.equal(getField("openbmc", "floatOpacity").default, 55);
+  assert.equal(getField("uefi-harness", "floatOpacity").default, 55);
+  assert.equal(getField("meirenzhi", "floatOpacity").default, 85);
   assert.deepEqual(listAssetFields("tgcf").map((field) => field.key), ["wallpaper"]);
   assert.deepEqual(listAssetFields("openbmc").map((field) => field.key), ["wallpaper"]);
   assert.equal(defaultsFor("tgcf").titleBrand, undefined);

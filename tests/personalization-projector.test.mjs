@@ -217,7 +217,16 @@ test("openbmc projects baked defaults through its own curve (ADR-0004)", async (
     light: "rgba(238, 246, 251, 0.60)",
     dark: "rgba(13, 30, 44, 0.72)",
   });
-  assert.equal("--dsw-alias-bg-overlay" in def.effects.tokenOverrides, false, "floating layers stay fixed (tgcf ruling #16 analogue)");
+  // 浮窗族（本地功能）：layer/overlay 挂独立 floatOpacity 旋钮；默认
+  // D=55 + starry 时与出厂静态值逐字节一致。
+  assert.deepEqual(def.effects.tokenOverrides["--dsw-alias-bg-overlay"], {
+    light: "rgba(250, 252, 253, 0.82)",
+    dark: "rgba(10, 22, 32, 0.88)",
+  });
+  assert.deepEqual(def.effects.tokenOverrides["--dsw-alias-bg-layer-2"], {
+    light: "rgba(255, 255, 255, 0.56)",
+    dark: "rgba(22, 48, 67, 0.60)",
+  });
   assert.equal(def.effects.backdrop.blur, 0, "no frost at the default anchor");
   assert.equal(def.effects.cssVariables, null);
   assert.equal(def.effects.staticCss, skin.css, "byte-equal static css — no glass rule at default");
@@ -272,7 +281,11 @@ test("uefi-harness projects baked defaults through its own curve (ADR-0004)", as
     light: "rgba(238, 235, 255, 0.60)",
     dark: "rgba(25, 20, 48, 0.72)",
   });
-  assert.equal("--dsw-alias-bg-overlay" in def.effects.tokenOverrides, false, "floating layers stay fixed (tgcf ruling #16 analogue)");
+  // 浮窗族（本地功能）：同 openbmc，D=55 + starry 复刻出厂静态值。
+  assert.deepEqual(def.effects.tokenOverrides["--dsw-alias-bg-overlay"], {
+    light: "rgba(252, 251, 255, 0.82)",
+    dark: "rgba(27, 21, 54, 0.88)",
+  });
   assert.equal(def.effects.backdrop.blur, 0, "no frost at the default anchor");
   assert.equal(def.effects.cssVariables, null);
   assert.equal(def.effects.staticCss, skin.css, "byte-equal static css — no glass rule at default");
@@ -308,6 +321,29 @@ test("uefi-harness projects baked defaults through its own curve (ADR-0004)", as
   assert.equal(customWallpaper.effects.backdrop.imageLight, `url("/dsh-skins/assets/${USER}.png")`);
   assert.equal(customWallpaper.effects.backdrop.imageDark, `url("/dsh-skins/assets/${USER}.png")`);
   assert.equal(customWallpaper.effects.backdrop.imageLight.includes("linear-gradient"), false);
+});
+
+test("floatOpacity detaches floating surfaces from panelOpacity (local feature)", async () => {
+  const { createOpenBmcHarness } = await import("../src/client/skins/openbmc-harness/index.js");
+  const skin = createOpenBmcHarness({ jsx: () => null });
+  const project = (overrides) => projectSkin(skin, overrides, { assetResolver: resolver });
+
+  // P=0 keeps the chat glass while floaters stay readable at their own knob.
+  const glass = project({ panelOpacity: 0 });
+  assert.equal(glass.effects.tokenOverrides["--dsw-alias-bg-base"].dark, "rgba(12, 26, 38, 0.00)");
+  assert.equal(glass.effects.tokenOverrides["--dsw-alias-bg-layer-2"].dark, "rgba(22, 48, 67, 0.60)");
+  assert.equal(glass.effects.tokenOverrides["--dsw-alias-bg-overlay"].dark, "rgba(10, 22, 32, 0.88)");
+
+  // D drives the float family independently: D=80 → overlay clamps to 1.00.
+  const solid = project({ panelOpacity: 0, floatOpacity: 80 });
+  assert.equal(solid.effects.tokenOverrides["--dsw-alias-bg-overlay"].dark, "rgba(10, 22, 32, 1.00)");
+  assert.equal(solid.effects.tokenOverrides["--dsw-alias-bg-layer-2"].dark, "rgba(22, 48, 67, 0.85)");
+
+  // floatColor=dark swaps the RGB family in BOTH modes; alphas untouched.
+  const ink = project({ panelOpacity: 0, floatColor: "dark" });
+  assert.equal(ink.effects.tokenOverrides["--dsw-alias-bg-layer-2"].dark, "rgba(28, 28, 38, 0.60)");
+  assert.equal(ink.effects.tokenOverrides["--dsw-alias-bg-overlay"].dark, "rgba(20, 20, 28, 0.88)");
+  assert.equal(ink.effects.tokenOverrides["--dsw-alias-bg-layer-2"].light, "rgba(28, 28, 38, 0.56)");
 });
 
 test("the REAL tgcf factory projects single scrim, static palette and static favicon", async () => {

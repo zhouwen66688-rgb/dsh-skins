@@ -12,6 +12,7 @@
  */
 
 import { SEAL_MARK } from "./seal.js";
+import { floatRgb } from "../../float-family.js";
 import { WALLPAPER_CRIMSON, WALLPAPER_MOONLIT, WALLPAPER_PALE } from "./wallpapers.js";
 
 const SCOPE = "body[data-dsh-tgcf-skin]";
@@ -205,6 +206,28 @@ export function createTgcfSkin(jsxRuntime) {
     const wallpaperUrl = assets.wallpaper?.url ?? null;
     // The favicon field is gone (Q35): the seal icon is a static skin asset.
     const faviconAsset = builtinAssets["seal-favicon"];
+    // 浮窗族（本地功能）：layer-1/2/3 + bg-overlay 改挂 floatOpacity +
+    // floatColor，不再固定较实。亮暗各带微调以复刻旧静态点
+    // （D=85 → overlay 0.82/0.88）；负 alpha 钳 0。
+    const tF = Math.min(1, Math.max(0, (typeof values.floatOpacity === "number" ? values.floatOpacity : 85) / 100));
+    const clampA = (x) => Math.min(1, Math.round(x * 100) / 100);
+    const floatDeltas = {
+      "--dsw-alias-bg-layer-1": 0.02,
+      "--dsw-alias-bg-layer-2": 0.06,
+      "--dsw-alias-bg-layer-3": 0.1,
+    };
+    const floatTokenOverrides = {};
+    for (const [key, delta] of Object.entries(floatDeltas)) {
+      const a = clampA(tF + delta);
+      floatTokenOverrides[key] = {
+        light: `rgba(${floatRgb(values.floatColor, key, "255,252,246")},${a})`,
+        dark: `rgba(${floatRgb(values.floatColor, key, "24,16,16")},${a})`,
+      };
+    }
+    floatTokenOverrides["--dsw-alias-bg-overlay"] = {
+      light: `rgba(${floatRgb(values.floatColor, "--dsw-alias-bg-overlay", "255,252,246")},${clampA(Math.max(0, tF - 0.03))})`,
+      dark: `rgba(${floatRgb(values.floatColor, "--dsw-alias-bg-overlay", "24,16,16")},${clampA(tF + 0.03)})`,
+    };
     return {
       bodyAttribute: "dshTgcfSkin",
       slogans: values.slogan ?? null,
@@ -217,17 +240,13 @@ export function createTgcfSkin(jsxRuntime) {
         overlayDark: scrimDark,
         blur: blurPx,
       },
-      tokenOverrides: {
+      tokenOverrides: Object.assign({
         "--dsw-alias-brand-primary": PALETTE.accent,
         "--dsw-alias-brand-text": PALETTE.gold,
         "--dsw-alias-button-primary-fill": PALETTE.accent,
         "--dsw-alias-button-primary-hover": PALETTE.gold,
         "--dsw-alias-bg-base": { light: panelBase(true, alpha), dark: panelBase(false, alpha) },
         "--dsw-specific-sidebar-fill": { light: panelBase(true, sidebarAlpha.light), dark: panelBase(false, sidebarAlpha.dark) },
-        // Floating layers (the switcher pop, menus) stay 较实 regardless of P,
-        // but tinted with the skin family - 素白 light / 墨黑 dark - instead of
-        // the host's neutral gray (ruling #16).
-        "--dsw-alias-bg-overlay": { light: panelBase(true, 0.82), dark: panelBase(false, 0.88) },
         // Control states tint with the 朱红 family (ruling #16, mirroring the
         // openbmc/uefi alphas 0.08/0.14): hovers and the trigger chip stop
         // falling back to the host's neutral blue-gray.
@@ -242,7 +261,7 @@ export function createTgcfSkin(jsxRuntime) {
         "--dsw-specific-sidebar-nav-item-active": { light: "rgba(255,252,246,0.9)", dark: "rgba(24,16,16,0.9)" },
         "--dsw-specific-bubble": BUBBLE,
         "--dsw-specific-bubble-highlight": BUBBLE_HIGHLIGHT,
-      },
+      }, floatTokenOverrides),
       cssVariables: {
         // The panel-glass frost (static CSS consumes the var) rides the same
         // curve; same value both themes — frost is a translucency effect.

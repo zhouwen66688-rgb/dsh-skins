@@ -106,6 +106,32 @@ export const SKINS = {
         unit: "%",
         default: 35,
       },
+      {
+        // 浮窗通透度（本地功能）：设置弹窗/菜单/对话框/悬浮卡等浮窗脱离
+        // 主旋钮，独立控制。默认与出厂观感对齐（tgcf 浮层族偏实）。
+        key: "floatOpacity",
+        type: "range",
+        scope: "single",
+        labelKey: "personalization.floatTranslucency",
+        min: 0,
+        max: 100,
+        step: 1,
+        unit: "%",
+        default: 85,
+      },
+      {
+        // 浮窗颜色（本地功能）：starry = 皮肤自带族（出厂星空蓝），
+        // dark = 中性墨黑族（明暗两态同色）。
+        key: "floatColor",
+        type: "select",
+        scope: "single",
+        labelKey: "personalization.floatColor",
+        options: [
+          { value: "dark", labelKey: "personalization.dark" },
+          { value: "starry", labelKey: "personalization.floatColorStarry" },
+        ],
+        default: "starry",
+      },
     ],
   },
 
@@ -140,6 +166,30 @@ export const SKINS = {
         unit: "%",
         default: 55,
       },
+      {
+        // 浮窗通透度（本地功能）：浮窗族脱离主旋钮；默认 55 复刻烘焙值
+        // （D=55 + starry 时派生串与出厂静态值逐字节一致）。
+        key: "floatOpacity",
+        type: "range",
+        scope: "single",
+        labelKey: "personalization.floatTranslucency",
+        min: 0,
+        max: 100,
+        step: 1,
+        unit: "%",
+        default: 55,
+      },
+      {
+        key: "floatColor",
+        type: "select",
+        scope: "single",
+        labelKey: "personalization.floatColor",
+        options: [
+          { value: "dark", labelKey: "personalization.dark" },
+          { value: "starry", labelKey: "personalization.floatColorStarry" },
+        ],
+        default: "starry",
+      },
     ],
   },
   "uefi-harness": {
@@ -164,6 +214,29 @@ export const SKINS = {
         step: 1,
         unit: "%",
         default: 55,
+      },
+      {
+        // 浮窗通透度（本地功能）：同 openbmc，默认 55 锚定烘焙值。
+        key: "floatOpacity",
+        type: "range",
+        scope: "single",
+        labelKey: "personalization.floatTranslucency",
+        min: 0,
+        max: 100,
+        step: 1,
+        unit: "%",
+        default: 55,
+      },
+      {
+        key: "floatColor",
+        type: "select",
+        scope: "single",
+        labelKey: "personalization.floatColor",
+        options: [
+          { value: "dark", labelKey: "personalization.dark" },
+          { value: "starry", labelKey: "personalization.floatColorStarry" },
+        ],
+        default: "starry",
       },
     ],
   },
@@ -207,6 +280,30 @@ export const SKINS = {
         step: 1,
         unit: "%",
         default: 35,
+      },
+      {
+        // 浮窗通透度（本地功能）：美人志的浮层此前为固定较实值，现挂独立
+        // 旋钮；默认 85 ≈ 旧静态 0.85/0.88 观感。
+        key: "floatOpacity",
+        type: "range",
+        scope: "single",
+        labelKey: "personalization.floatTranslucency",
+        min: 0,
+        max: 100,
+        step: 1,
+        unit: "%",
+        default: 85,
+      },
+      {
+        key: "floatColor",
+        type: "select",
+        scope: "single",
+        labelKey: "personalization.floatColor",
+        options: [
+          { value: "dark", labelKey: "personalization.dark" },
+          { value: "starry", labelKey: "personalization.floatColorStarry" },
+        ],
+        default: "starry",
       },
     ],
   },

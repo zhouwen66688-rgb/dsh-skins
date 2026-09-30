@@ -1,5 +1,6 @@
 /** Independent OpenBMC Studio skin (id: openbmc). */
 import { resolveImageRef } from "../../../shared/personalization/catalog.js";
+import { floatRgb } from "../../float-family.js";
 
 export function createOpenBmcHarness(jsxRuntime) {
   const { jsx } = jsxRuntime;
@@ -1766,13 +1767,11 @@ export function createOpenBmcHarness(jsxRuntime) {
     const pct = (points) => (points / 100).toFixed(2);
     const alpha = (rgb, baked) => `rgba(${rgb}, ${pct(pt(baked))})`;
 
-    // 随动族：字面量烘焙点（亮 / 暗），RGB 逐字取自 ③ 配色块。
+    // 随动族（主对话面板）：字面量烘焙点（亮 / 暗），RGB 逐字取自 ③ 配色块。
+    // 浮窗族（layer-1/2/3 + bg-overlay）脱离主旋钮，见下方 floatRiding。
     const riding = {
       "--dsw-alias-bg-base": { light: ["247, 250, 252", 55], dark: ["12, 26, 38", 55] },
       "--dsw-alias-bg-module-platform": { light: ["240, 246, 250", 55], dark: ["22, 48, 67", 60] },
-      "--dsw-alias-bg-layer-1": { light: ["255, 255, 255", 48], dark: ["18, 38, 53", 55] },
-      "--dsw-alias-bg-layer-2": { light: ["255, 255, 255", 56], dark: ["22, 48, 67", 60] },
-      "--dsw-alias-bg-layer-3": { light: ["255, 255, 255", 62], dark: ["26, 58, 80", 64] },
       "--dsw-specific-sidebar-fill": { light: ["238, 246, 251", 60], dark: ["13, 30, 44", 72] },
       "--dsw-specific-input-major": { light: ["255, 255, 255", 60], dark: ["18, 42, 60", 65] },
       "--dsw-specific-login-input": { light: ["255, 255, 255", 60], dark: ["18, 42, 60", 65] },
@@ -1780,6 +1779,25 @@ export function createOpenBmcHarness(jsxRuntime) {
     const tokenOverrides = {};
     for (const [key, modes] of Object.entries(riding)) {
       tokenOverrides[key] = { light: alpha(modes.light[0], modes.light[1]), dark: alpha(modes.dark[0], modes.dark[1]) };
+    }
+
+    // 浮窗族（本地功能）：设置弹窗/菜单/对话框/悬浮卡/切换器弹层走的
+    // bg-layer-1/2/3 + bg-overlay 改挂 floatOpacity + floatColor，不再随 P。
+    // 烘焙增量原样保留——D=55 + starry 时派生串与出厂静态值逐字节一致；
+    // floatColor=dark 换中性墨黑族（明暗两态同色），增量照旧。
+    const D = typeof values.floatOpacity === "number" ? values.floatOpacity : 55;
+    const alphaF = (rgb, baked) => `rgba(${rgb}, ${pct(Math.min(100, Math.max(0, D + baked - 55)))})`;
+    const floatRiding = {
+      "--dsw-alias-bg-layer-1": { light: ["255, 255, 255", 48], dark: ["18, 38, 53", 55] },
+      "--dsw-alias-bg-layer-2": { light: ["255, 255, 255", 56], dark: ["22, 48, 67", 60] },
+      "--dsw-alias-bg-layer-3": { light: ["255, 255, 255", 62], dark: ["26, 58, 80", 64] },
+      "--dsw-alias-bg-overlay": { light: ["250, 252, 253", 82], dark: ["10, 22, 32", 88] },
+    };
+    for (const [key, modes] of Object.entries(floatRiding)) {
+      tokenOverrides[key] = {
+        light: alphaF(floatRgb(values.floatColor, key, modes.light[0]), modes.light[1]),
+        dark: alphaF(floatRgb(values.floatColor, key, modes.dark[0]), modes.dark[1]),
+      };
     }
 
     // 纱与旋钮同联动（默认 P 时整串与烘焙 scrim 逐字节相等）；浮层族

@@ -22,6 +22,7 @@ import {
   WALLPAPER_YUNTAI,
   WALLPAPER_ZILING,
 } from "./wallpapers.js";
+import { floatRgb } from "../../float-family.js";
 
 const SCOPE = "body[data-dsh-meirenzhi-skin]";
 
@@ -113,7 +114,6 @@ function project(values, assets) {
     "--dsw-alias-brand-text": { light: "#A87B2F", dark: "#D9B45C" },
     "--dsw-alias-button-primary-fill": { light: "#B8433F", dark: "#E58A80" },
     "--dsw-alias-button-primary-hover": { light: "#A87B2F", dark: "#D9B45C" },
-    "--dsw-alias-bg-overlay": { light: "rgba(252, 250, 246, 0.85)", dark: "rgba(24, 24, 34, 0.88)" },
     "--dsw-alias-interactive-bg-hover": { light: "rgba(184, 67, 63, 0.08)", dark: "rgba(229, 138, 128, 0.14)" },
     "--dsw-alias-interactive-bg-active": { light: "rgba(184, 67, 63, 0.14)", dark: "rgba(229, 138, 128, 0.20)" },
     "--dsw-specific-sidebar-nav-item-hover": { light: "rgba(250, 249, 246, 0.6)", dark: "rgba(28, 28, 40, 0.6)" },
@@ -127,6 +127,27 @@ function project(values, assets) {
       dark: `rgba(${BASE_RGB.dark}, ${a2(modes.dark)})`,
     };
   }
+
+  // 浮窗族（本地功能）：layer-1/2/3 + bg-overlay 改挂 floatOpacity +
+  // floatColor，不再固定较实。默认 85 ≈ 旧静态 0.85/0.88 观感
+  // （overlay 暗态 +0.03 微调复刻原值）。
+  const tF = Math.min(1, Math.max(0, (typeof values.floatOpacity === "number" ? values.floatOpacity : 85) / 100));
+  const floatDeltas = {
+    "--dsw-alias-bg-layer-1": 0.02,
+    "--dsw-alias-bg-layer-2": 0.06,
+    "--dsw-alias-bg-layer-3": 0.1,
+  };
+  for (const [key, delta] of Object.entries(floatDeltas)) {
+    const a = a2(tF + delta);
+    tokenOverrides[key] = {
+      light: `rgba(${floatRgb(values.floatColor, key, BASE_RGB.light)}, ${a})`,
+      dark: `rgba(${floatRgb(values.floatColor, key, BASE_RGB.dark)}, ${a})`,
+    };
+  }
+  tokenOverrides["--dsw-alias-bg-overlay"] = {
+    light: `rgba(${floatRgb(values.floatColor, "--dsw-alias-bg-overlay", "252, 250, 246")}, ${a2(tF)})`,
+    dark: `rgba(${floatRgb(values.floatColor, "--dsw-alias-bg-overlay", "24, 24, 34")}, ${a2(tF + 0.03)})`,
+  };
 
   // 纱：单一 scrim 值驱动明暗两层；底色分暖雾白 / 玄夜。
   const s = (Math.round(30 * t * t) / 100).toFixed(3);
