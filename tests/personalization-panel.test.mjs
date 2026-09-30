@@ -128,8 +128,12 @@ for (const skinId of SKINS) {
         assert.ok(texts.includes("personalization.status.offline"), "offline banner in the footer");
         assert.notEqual(findButton(tree, "personalization.status.retry"), null, "retry offered");
       } else if (status === "synced") {
-        assert.ok(actions === undefined,
-          "no footer strip without status content — the panel's resting height never depends on state (v1.0.0 ruling)");
+        // 本地功能：底部操作条常驻——全局「保存」在干净与已修改面板上都
+        // 渲染，面板高度依然恒定（按钮不随状态出现/消失）。
+        assert.notEqual(actions, undefined, "global save strip is a permanent fixture (local feature)");
+        const saveAll = findButton(tree, "personalization.saveAll");
+        assert.notEqual(saveAll, null, "global 保存 button renders");
+        assert.equal(saveAll.props.disabled, true, "pristine panel keeps save disabled");
       } else {
         assert.notEqual(actions, undefined, "loading/readonly statuses keep their transient strip");
       }
@@ -150,32 +154,27 @@ test("field edits preview locally and arm the auto-save; no save button exists",
   assert.equal(panel.configClient.getState().dirtyCount, 1, "edits preview locally; the client debounces the flush");
 });
 
-test("slogan edits stay in a local draft; 保存 previews the locale object and flushes at once", async () => {
+test("slogan edits stay in a draft; the global 保存 flushes slogan and all staged fields at once", async () => {
   const panel = mountPanel({ skinId: "tgcf", status: "synced" });
   await tick();
-  const zh = flatten(panel.tree()).find((n) => n.type === "input" && n.props["aria-label"] === "personalization.slogan (ZH)");
-  const save = () => findButton(panel.tree(), "personalization.sloganSave");
-  assert.notEqual(zh, null);
-  assert.notEqual(save(), null, "explicit save button exists for the slogan");
-  assert.equal(save().props.disabled, true, "pristine draft keeps save disabled");
+  const zh = flatten(panel.tree()).find((n) => n.type === "input" && n.props["aria-label"] === "personalization.slogan");
+  const save = () => findButton(panel.tree(), "personalization.saveAll");
+  assert.notEqual(zh, null, "single slogan input (zh/en share one draft)");
+  assert.notEqual(save(), null, "global save button is always present");
+  assert.equal(save().props.disabled, true, "pristine panel keeps save disabled");
 
   zh.props.onChange({ target: { value: "新标语" } });
   await tick();
   assert.equal(panel.configClient.calls.preview.length, 0, "draft typing never previews");
-
-  // Re-query from the re-rendered tree — the en input's handler must see the
-  // fresh draft (exactly like typing into the re-rendered DOM).
-  const enFresh = flatten(panel.tree()).find((n) => n.type === "input" && n.props["aria-label"] === "personalization.slogan (EN)");
-  enFresh.props.onChange({ target: { value: "New slogan" } });
-  await tick();
-  assert.equal(panel.configClient.calls.preview.length, 0, "draft typing never previews");
-
   assert.equal(save().props.disabled, false, "dirty draft enables save");
+
   await save().props.onClick();
   await tick();
-  assert.equal(panel.configClient.calls.preview.length, 1);
-  assert.deepEqual(panel.configClient.calls.preview[0], { skinId: "tgcf", key: "slogan", value: { zh: "新标语", en: "New slogan" } });
-  assert.equal(panel.configClient.calls.flushNow, 1, "save flushes immediately");
+  assert.deepEqual(panel.configClient.calls.preview, [
+    { skinId: "tgcf", key: "slogan", value: { zh: "新标语", en: "新标语" } },
+  ], "save writes the draft to BOTH locales");
+  assert.equal(panel.configClient.calls.flushNow, 1, "save flushes everything at once");
+  assert.notEqual(findButton(panel.tree(), "personalization.saveAllDone"), null, "success flashes 已保存");
 });
 
 test("恢复默认 confirms with the affected field list; decline is a no-op (user ruling #9)", async () => {

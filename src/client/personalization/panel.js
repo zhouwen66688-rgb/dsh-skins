@@ -156,62 +156,19 @@ export function createPersonalizationPanel({ jsx, react, configClient, tr, built
     ] });
   }
 
-  // 标语（本地功能）：草稿编辑 + 显式「保存」。标语不走 ADR-0003 的
-  // 自动保存——输入只进本地草稿，按保存才 preview + flushNow 立即落盘；
-  // 成功内联闪现「已保存」，失败沿用面板全局状态条（lastFlushError）。
-  // 草稿随已保存值的内容变化自动回同步（恢复默认后草稿跟着回默认），
-  // 用户正在输入的脏草稿永不被覆盖。
-  function SloganField({ field, value, onValue, disabled }) {
-    const savedText = `${value?.zh ?? ""}\u0000${value?.en ?? ""}`;
-    const [draft, setDraft] = useState(() => {
-      const [zh, en] = savedText.split("\u0000");
-      return { zh, en };
-    });
-    const [note, setNote] = useState(null); // "saved" | null（短暂反馈）
-    const dirty = draft.zh !== (value?.zh ?? "") || draft.en !== (value?.en ?? "");
-    useEffect(() => {
-      const [zh, en] = savedText.split("\u0000");
-      setDraft((previous) => (previous.zh === zh && previous.en === en ? previous : { zh, en }));
-    }, [savedText]);
-    useEffect(() => {
-      if (note === null) return undefined;
-      const timer = setTimeout(() => setNote(null), 1600);
-      return () => clearTimeout(timer);
-    }, [note]);
-    const save = () => {
-      onValue({ ...draft });
-      void configClient.flushNow().then((result) => {
-        if (!result.blocked) setNote("saved");
-      });
-    };
+  // 标语（本地功能）：单输入框 + 草稿态。中英文保存为同一句（主人裁决：
+  // 双框各自为政反而困扰）；空输入保存 = 回落出厂默认。草稿与保存按钮
+  // 都提升到面板级——「保存」是整面板的总保存，不只标语。
+  function SloganField({ field, text, onText, disabled }) {
     return jsx("label", { className: "dsh-skins-pz-row", children: [
       jsx("span", { className: "dsh-skins-pz-label", children: tr(field.labelKey) }),
-      jsx("div", {
-        className: "dsh-skins-pz-fields dsh-skins-pz-fields-locale",
-        children: [
-          jsx("input", {
-            key: "zh", type: "text", className: "dsh-skins-pz-input",
-            value: draft.zh, maxLength: field.maxLength, disabled,
-            "aria-label": `${tr(field.labelKey)} (ZH)`,
-            placeholder: field.default?.zh ?? "",
-            onChange: (event) => setDraft({ ...draft, zh: event.target.value }),
-          }),
-          jsx("input", {
-            key: "en", type: "text", className: "dsh-skins-pz-input",
-            value: draft.en, maxLength: field.maxLength, disabled,
-            "aria-label": `${tr(field.labelKey)} (EN)`,
-            placeholder: field.default?.en ?? "",
-            onChange: (event) => setDraft({ ...draft, en: event.target.value }),
-          }),
-          jsx("button", {
-            key: "save", type: "button",
-            className: `dsh-skins-pz-btn${note === "saved" ? " dsh-skins-pz-primary" : ""}`,
-            disabled: disabled || !dirty,
-            onClick: save,
-            children: note === "saved" ? tr("personalization.sloganSaved") : tr("personalization.sloganSave"),
-          }, "save"),
-        ],
-      }),
+      jsx("div", { className: "dsh-skins-pz-fields", children: jsx("input", {
+        type: "text", className: "dsh-skins-pz-input",
+        value: text, maxLength: field.maxLength, disabled,
+        "aria-label": tr(field.labelKey),
+        placeholder: field.default?.zh ?? "",
+        onChange: (event) => onText(event.target.value),
+      }) }),
     ] });
   }
 
@@ -467,11 +424,43 @@ export function createPersonalizationPanel({ jsx, react, configClient, tr, built
       headerRef.current?.focus?.(wideLayout ? { preventScroll: true } : undefined);
     }, []);
 
+    // 标语草稿 + 全局保存（本地功能）：草稿为 null 时跟随已保存值；
+    // 已保存值内容变化（恢复默认/跨端同步）时草稿自动回同步。钩子全部
+    // 位于 schema 早退之前（钩子必须无条件执行）。
+    const [sloganDraft, setSloganDraft] = useState(null);
+    const [saveNote, setSaveNote] = useState(false);
+    useEffect(() => {
+      if (!saveNote) return undefined;
+      const timer = setTimeout(() => setSaveNote(false), 1600);
+      return () => clearTimeout(timer);
+    }, [saveNote]);
+    const overrides = schema === null ? {} : configClient.effectiveOverrides(skinId);
+    const merged = schema === null ? null : mergeValues(skinId, overrides);
+    const savedSlogan = merged?.values.slogan ?? null;
+    const sloganDefault = schema?.fields.find((field) => field.key === "slogan")?.default ?? null;
+    const savedSloganText = typeof savedSlogan?.zh === "string" && savedSlogan.zh !== ""
+      ? savedSlogan.zh
+      : (typeof savedSlogan?.en === "string" && savedSlogan.en !== "" ? savedSlogan.en : (sloganDefault?.zh ?? ""));
+    const sloganDirty = sloganDraft !== null && sloganDraft !== savedSloganText;
+    const sloganText = sloganDraft ?? savedSloganText;
+    useEffect(() => { setSloganDraft(null); }, [savedSloganText]);
+
     if (schema === null) return null;
     const writesBlocked = state.status !== "synced" || state.mode === "recovery";
-    const overrides = configClient.effectiveOverrides(skinId);
-    const { values } = mergeValues(skinId, overrides);
+    const { values } = merged;
     const hasAnyOverride = Object.keys(overrides).length > 0;
+
+    // 全局保存（本地功能）：标语草稿（若有）先入 preview，然后 flushNow
+    // 一次把所有 staged 字段立即落盘；成功闪现「已保存」，失败沿用状态条。
+    const saveAll = () => {
+      if (sloganDirty) {
+        configClient.preview(skinId, "slogan",
+          sloganText.trim() === "" ? sloganDefault : { zh: sloganText, en: sloganText });
+      }
+      void configClient.flushNow().then((result) => {
+        if (!result.blocked) setSaveNote(true);
+      });
+    };
 
     const fieldRows = schema.fields.map((field) => {
       const value = values[field.key];
@@ -479,7 +468,10 @@ export function createPersonalizationPanel({ jsx, react, configClient, tr, built
       const common = { field, value, onValue: setValue, disabled: writesBlocked };
       switch (field.type) {
         case "text": return field.scope === "locale"
-          ? jsx(SloganField, { ...common, key: `${skinId}:${field.key}` })
+          ? jsx(SloganField, {
+              field, text: sloganText, onText: setSloganDraft,
+              disabled: writesBlocked, key: `${skinId}:${field.key}`,
+            })
           : jsx(TextField, { ...common, key: field.key });
         case "range": return jsx(RangeField, { ...common, key: field.key });
         case "select": return jsx(SelectField, { ...common, key: field.key });
@@ -583,9 +575,21 @@ export function createPersonalizationPanel({ jsx, react, configClient, tr, built
         }) : null,
       ] }),
       ...fieldRows,
-      statusCluster.length > 0 ? jsx("div", { className: "dsh-skins-pz-actions", children:
-        jsx("div", { className: "dsh-skins-pz-cluster dsh-skins-pz-cluster-status", children: statusCluster }),
-      }) : null,
+      // 底部操作条（本地功能）：全局「保存」常驻——任何调整（含标语草稿）
+      // 点一次保存全部立即生效；右侧保留瞬态状态条。常驻渲染让面板高度恒定
+      // （v1.0.0 高度一致裁决的延伸）。
+      jsx("div", { className: "dsh-skins-pz-actions", children: [
+        jsx("div", { className: "dsh-skins-pz-cluster", children:
+          jsx("button", {
+            type: "button",
+            className: "dsh-skins-pz-btn dsh-skins-pz-primary",
+            disabled: writesBlocked || (!sloganDirty && state.dirtyCount === 0),
+            onClick: saveAll,
+            children: saveNote ? tr("personalization.saveAllDone") : tr("personalization.saveAll"),
+          }),
+        }),
+        statusCluster.length > 0 ? jsx("div", { className: "dsh-skins-pz-cluster dsh-skins-pz-cluster-status", children: statusCluster }) : null,
+      ] }),
     ] });
   };
 }
