@@ -22,7 +22,7 @@ import {
   WALLPAPER_YUNTAI,
   WALLPAPER_ZILING,
 } from "./wallpapers.js";
-import { floatRgb } from "../../float-family.js";
+import { floatRgb, floatFrostCss } from "../../float-family.js";
 
 const SCOPE = "body[data-dsh-meirenzhi-skin]";
 
@@ -168,7 +168,7 @@ function project(values, assets) {
     backdrop: { imageLight, imageDark, overlayLight: scrimLight, overlayDark: scrimDark, blur: blurPx },
     tokenOverrides,
     cssVariables: blurPx > 0 ? { "--dsh-mrz-glass-blur": { light: `${blurPx}px`, dark: `${blurPx}px` } } : null,
-    staticCss: blurPx > 0 ? CSS + "\n" + GLASS_RULE : CSS,
+    staticCss: (blurPx > 0 ? CSS + "\n" + GLASS_RULE : CSS) + "\n" + floatFrostCss("body[data-dsh-meirenzhi-skin]"),
     decorations: null,
   };
 }

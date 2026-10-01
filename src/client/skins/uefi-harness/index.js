@@ -6,7 +6,7 @@
  * design remains a placeholder until the final design lands.
  */
 import { resolveImageRef } from "../../../shared/personalization/catalog.js";
-import { floatRgb } from "../../float-family.js";
+import { floatRgb, floatFrostCss } from "../../float-family.js";
 
 // Official UEFI Forum logo — the red cube with white "uefi" letters, embedded
 // as two vector paths traced from uefi.org's published uefi_logo_red.gif
@@ -1179,7 +1179,7 @@ body[data-dsh-uefi-harness][data-ds-dark-theme] .dsh-skins-pop {
       backdrop: { imageLight, imageDark, overlayLight: null, overlayDark: null, blur: blurPx },
       tokenOverrides,
       cssVariables: blurPx > 0 ? { "--dsh-uefi-glass-blur": { light: `${blurPx}px`, dark: `${blurPx}px` } } : null,
-      staticCss: blurPx > 0 ? css + "\n" + GLASS_RULE : css,
+      staticCss: (blurPx > 0 ? css + "\n" + GLASS_RULE : css) + "\n" + floatFrostCss("body[data-dsh-uefi-harness]"),
       decorations: null,
     };
   }

@@ -1,6 +1,6 @@
 /** Independent OpenBMC Studio skin (id: openbmc). */
 import { resolveImageRef } from "../../../shared/personalization/catalog.js";
-import { floatRgb } from "../../float-family.js";
+import { floatRgb, floatFrostCss } from "../../float-family.js";
 
 export function createOpenBmcHarness(jsxRuntime) {
   const { jsx } = jsxRuntime;
@@ -1821,7 +1821,7 @@ export function createOpenBmcHarness(jsxRuntime) {
       backdrop: { imageLight, imageDark, overlayLight: null, overlayDark: null, blur: blurPx },
       tokenOverrides,
       cssVariables: blurPx > 0 ? { "--dsh-openbmc-glass-blur": { light: `${blurPx}px`, dark: `${blurPx}px` } } : null,
-      staticCss: blurPx > 0 ? CSS + "\n" + GLASS_RULE : CSS,
+      staticCss: (blurPx > 0 ? CSS + "\n" + GLASS_RULE : CSS) + "\n" + floatFrostCss("body[data-dsh-openbmc-skin]"),
       decorations: null,
     };
   }

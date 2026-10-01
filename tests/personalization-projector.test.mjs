@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { normalizeEffects, projectSkin } from "../src/client/personalization/projector.js";
 import { defaultsFor } from "../src/shared/personalization/catalog.js";
+import { floatFrostCss } from "../src/client/float-family.js";
 
 /** Static tgcf palette since the simplification (colors are baked, not fields). */
 const PALETTE = {
@@ -194,7 +195,8 @@ test("the REAL openbmc and uefi factories project their baked defaults verbatim"
     assert.deepEqual(result.effects.slogans, skin.slogans);
     assert.equal(result.effects.titleBrand, skin.title);
     assert.equal(result.effects.favicon.href, skin.favicon);
-    assert.equal(result.effects.staticCss, skin.css);
+    const bodySelector = "body[data-" + skin.bodyAttr.replace(/[A-Z]/g, (letter) => "-" + letter.toLowerCase()) + "]";
+    assert.equal(result.effects.staticCss, skin.css + "\n" + floatFrostCss(bodySelector));
     assert.equal(result.effects.bodyAttribute, skin.bodyAttr);
   }
 });
@@ -229,7 +231,7 @@ test("openbmc projects baked defaults through its own curve (ADR-0004)", async (
   });
   assert.equal(def.effects.backdrop.blur, 0, "no frost at the default anchor");
   assert.equal(def.effects.cssVariables, null);
-  assert.equal(def.effects.staticCss, skin.css, "byte-equal static css — no glass rule at default");
+  assert.equal(def.effects.staticCss, skin.css + "\n" + floatFrostCss("body[data-dsh-openbmc-skin]"), "static css = skin css + float frost rule");
 
   // P=0 floors the riding family at 0 points (alpha string "0.00").
   const floor = project({ panelOpacity: 0 });
@@ -246,7 +248,7 @@ test("openbmc projects baked defaults through its own curve (ADR-0004)", async (
   assert.equal(ceiling.effects.backdrop.blur, 24);
   assert.equal(
     ceiling.effects.staticCss,
-    skin.css + "\n" + 'body[data-dsh-openbmc-skin] [id="root"]{backdrop-filter:blur(var(--dsh-openbmc-glass-blur,0px))}',
+    skin.css + "\n" + 'body[data-dsh-openbmc-skin] [id="root"]{backdrop-filter:blur(var(--dsh-openbmc-glass-blur,0px))}' + "\n" + floatFrostCss("body[data-dsh-openbmc-skin]"),
   );
   assert.deepEqual(ceiling.effects.cssVariables["--dsh-openbmc-glass-blur"], { light: "24px", dark: "24px" });
 
@@ -288,7 +290,7 @@ test("uefi-harness projects baked defaults through its own curve (ADR-0004)", as
   });
   assert.equal(def.effects.backdrop.blur, 0, "no frost at the default anchor");
   assert.equal(def.effects.cssVariables, null);
-  assert.equal(def.effects.staticCss, skin.css, "byte-equal static css — no glass rule at default");
+  assert.equal(def.effects.staticCss, skin.css + "\n" + floatFrostCss("body[data-dsh-uefi-harness]"), "static css = skin css + float frost rule");
 
   // P=0 floors the riding family at 0 points (alpha string "0.00").
   const floor = project({ panelOpacity: 0 });
@@ -305,7 +307,7 @@ test("uefi-harness projects baked defaults through its own curve (ADR-0004)", as
   assert.equal(ceiling.effects.backdrop.blur, 24);
   assert.equal(
     ceiling.effects.staticCss,
-    skin.css + "\n" + 'body[data-dsh-uefi-harness] [id="root"]{backdrop-filter:blur(var(--dsh-uefi-glass-blur,0px))}',
+    skin.css + "\n" + 'body[data-dsh-uefi-harness] [id="root"]{backdrop-filter:blur(var(--dsh-uefi-glass-blur,0px))}' + "\n" + floatFrostCss("body[data-dsh-uefi-harness]"),
   );
   assert.deepEqual(ceiling.effects.cssVariables["--dsh-uefi-glass-blur"], { light: "24px", dark: "24px" });
 

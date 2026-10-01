@@ -12,7 +12,7 @@
  */
 
 import { SEAL_MARK } from "./seal.js";
-import { floatRgb } from "../../float-family.js";
+import { floatRgb, floatFrostCss } from "../../float-family.js";
 import { WALLPAPER_CRIMSON, WALLPAPER_MOONLIT, WALLPAPER_PALE } from "./wallpapers.js";
 
 const SCOPE = "body[data-dsh-tgcf-skin]";
@@ -267,7 +267,7 @@ export function createTgcfSkin(jsxRuntime) {
         // curve; same value both themes — frost is a translucency effect.
         "--dsh-tgcf-glass-blur": { light: `${blurPx}px`, dark: `${blurPx}px` },
       },
-      staticCss: CSS,
+      staticCss: CSS + "\n" + floatFrostCss("body[data-dsh-tgcf-skin]"),
       decorations: null,
     };
   }

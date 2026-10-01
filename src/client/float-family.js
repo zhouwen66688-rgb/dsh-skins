@@ -28,3 +28,22 @@ export function floatRgb(colorChoice, tokenKey, starryRgb) {
   if (colorChoice === "dark") return FLOAT_INK[tokenKey] ?? starryRgb;
   return starryRgb;
 }
+
+/**
+ * 磨砂浮窗（Plan A，主人裁决）：给消费浮窗底色但宿主未接磨砂的浮层统一
+ * 补 backdrop-filter（复用主题的 --dsw-menu-backdrop-filter），重叠处文字
+ * 不再互相透底。钩子用 ADR-0006 的 class 后缀并集策略——哈希漂移与结构
+ * 变化各有一支兜底；失效仅影响磨砂观感，token 填充不受影响：
+ *   _preview → HoverCard 预览卡（"已编辑 N 个文件"弹层等）
+ *   _dialog  → 模态对话框（Modal 原语）
+ *   [data-shortcut-modal="settings"] → 设置面板（稳定宿主钩子）
+ *   .dsh-skins-pop → 皮肤自带切换器弹层
+ * 菜单/选择器等宿主面板本就消费 menu-backdrop-filter，无需处理。
+ */
+export function floatFrostCss(bodySelector) {
+  const targets = '[class*="_preview"], [class$="_dialog"], [data-shortcut-modal="settings"], .dsh-skins-pop';
+  return (
+    `${bodySelector} ${targets}{-webkit-backdrop-filter:var(--dsw-menu-backdrop-filter);` +
+    "backdrop-filter:var(--dsw-menu-backdrop-filter)}"
+  );
+}
